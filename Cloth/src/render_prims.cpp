@@ -2,6 +2,7 @@
 #include <glm\gtc\type_ptr.hpp>
 #include <glm\gtc\matrix_transform.hpp>
 #include <cstdio>
+#include <iostream>
 
 //Boolean variables allow to show/hide the primitives
 bool renderSphere = true;
@@ -40,6 +41,42 @@ void setupPrims() {
 	Capsule::setupCapsule();
 	LilSpheres::setupParticles(LilSpheres::maxParticles);
 	ClothMesh::setupClothMesh();
+
+	//TODO
+	int col = 14, row = 18;
+	int clothLength = col*row;
+	float* clothArray = new float[clothLength*3];
+	for (int i = 0; i < row; ++i) {
+		for (int j = 0; j < col; ++j) {
+			if (i == 0 && j == 0) {
+				clothArray[0] = 0;
+				clothArray[1] = 5;
+				clothArray[2] = 0;
+			}
+			else {
+				clothArray[(i*col + j) * 3 + 0] = clothArray[0] + j*0.2;
+				clothArray[(i*col + j) * 3 + 1] = clothArray[1];
+				clothArray[(i*col + j) * 3 + 2] = clothArray[2] + i*0.2;
+			}
+		}
+	}
+
+	//for (int i = 0; i < col; ++i) {
+	//	for (int j = 0; j < row; ++j) {
+	//		if (i == 0 && j == 0) {
+	//			clothArray[0] = 0;
+	//			clothArray[1] = 5;
+	//			clothArray[2] = 0;
+	//		}
+	//		else {
+	//			clothArray[(i*row + j) * 3 + 0] = clothArray[0] + j*0.2;
+	//			clothArray[(i*row + j) * 3 + 1] = clothArray[1];
+	//			clothArray[(i*row + j) * 3 + 2] = clothArray[2] + i*0.2;
+	//		}
+	//	}
+	//}
+
+	ClothMesh::updateClothMesh(clothArray);
 }
 void cleanupPrims() {
 	Sphere::cleanupSphere();
@@ -60,4 +97,5 @@ void renderPrims() {
 	
 	if (renderCloth)
 		ClothMesh::drawClothMesh();
+	
 }
