@@ -13,6 +13,9 @@ bool renderParticles = false;
 bool renderCloth = true;
 bool show_test_window = false;
 
+glm::vec3 spherePos(0.f, 3.f, 0.f);
+float sphereRadius = 1.f;
+
 namespace Sphere {
 	extern void setupSphere(glm::vec3 pos = glm::vec3(0.f, 1.f, 0.f), float radius = 1.f);
 	extern void cleanupSphere();
@@ -94,14 +97,83 @@ void initializeCloth() {
 	}
 }
 
-
-
 void particleToFloatConverter() {
 	for (int i = 0; i < 252; ++i) {
 		vertArray[i * 3 + 0] = cloth[i].pos.x;
 		vertArray[i * 3 + 1] = cloth[i].pos.y;
 		vertArray[i * 3 + 2] = cloth[i].pos.z;
 	}
+}
+
+void collidePlane(int index, int A, int B, int C, int d) {
+	glm::vec3 normal = { A, B, C };
+	float dotProdAct = glm::dot(normal, cloth[index].pos);
+	float dotProdPrev = glm::dot(normal, cloth[index].prePos);
+	float dotProdVelo = glm::dot(normal, cloth[index].velocity);
+	float checkColl = (dotProdAct + d)*(dotProdPrev + d);
+
+	if (checkColl <= 0) {
+		cloth[index].pos = cloth[index].pos - 2 * (dotProdAct + d) * normal;
+		cloth[index].velocity = cloth[index].velocity - 2 * dotProdVelo * normal;
+	}
+}
+
+float a, b, c, resPos, resNeg, res, x, y, z; //variables for collide sphere
+void collideSphere(int index) {
+
+
+	a = (cloth[index].pos.x - cloth[index].prePos.x) * (cloth[index].pos.x - cloth[index].prePos.x) +
+		(cloth[index].pos.y - cloth[index].prePos.y) * (cloth[index].pos.y - cloth[index].prePos.y) +
+		(cloth[index].pos.z - cloth[index].prePos.z) * (cloth[index].pos.z - cloth[index].prePos.z);
+	b = 2 * ((cloth[index].pos.x - cloth[index].prePos.x) * (cloth[index].prePos.x - spherePos.x) +
+		(cloth[index].pos.y - cloth[index].prePos.y) * (cloth[index].prePos.y - spherePos.y) +
+		(cloth[index].pos.z - cloth[index].prePos.z) * (cloth[index].prePos.z - spherePos.z));
+	c = spherePos.x * spherePos.x + spherePos.y * spherePos.y + spherePos.z * spherePos.z + cloth[index].prePos.x *
+		cloth[index].prePos.x + cloth[index].prePos.y * cloth[index].prePos.y + cloth[index].prePos.z *
+		cloth[index].prePos.z - 2 * (spherePos.x * cloth[index].prePos.x + spherePos.y * cloth[index].prePos.y +
+			spherePos.z * cloth[index].prePos.z) - sphereRadius;
+
+	if (b * b - 4 * a * c >= 0) {
+		glm::vec3 auxil, colis;
+		resPos = (-b + glm::sqrt(b*b - 4 * a * c)) / (2 * a);
+		resNeg = (-b - glm::sqrt(b*b - 4 * a * c)) / (2 * a);
+		x = cloth[index].pos.x - cloth[index].prePos.x;
+		y = cloth[index].pos.y - cloth[index].prePos.y;
+		z = cloth[index].pos.z - cloth[index].prePos.z;
+		glm::vec3 coli1 = { cloth[index].prePos.x + x * resPos, cloth[index].prePos.y + y * resPos, cloth[index].prePos.z + z * resPos };
+		glm::vec3 coli2 = { cloth[index].prePos.x + x * resNeg, cloth[index].prePos.y + y * resNeg, cloth[index].prePos.z + z * resNeg };
+		if (glm::distance(cloth[index].pos, coli1) <= glm::distance(cloth[index].pos, coli2)) {
+			res = resPos;
+			colis = coli1;
+		}
+		else {
+			res = resNeg;
+			colis = coli2;
+		}
+
+		glm::vec3 colisNormal = glm::normalize(colis - spherePos);
+		float d = colisNormal.x * colis.x + colisNormal.y * colis.y + colisNormal.z * colis.z;
+		d = -d;
+
+		float actAux = glm::dot(colisNormal, cloth[index].pos);
+		float prevAux = glm::dot(colisNormal, cloth[index].prePos);
+		float dotProdSpeed = glm::dot(colisNormal, cloth[index].velocity);
+		float checkCol = (actAux + d) * (prevAux + d);
+		if (checkCol <= 0) {
+			cloth[index].pos = cloth[index].pos - 2 * (actAux + d) * colisNormal;
+			cloth[index].velocity = cloth[index].velocity - 2 * dotProdSpeed * colisNormal;
+		}
+	}
+}
+
+
+void boxCollision(int index) {
+	collidePlane(index, 0, 1, 0, 0);//Ground
+	collidePlane(index, 0, -1, 0, 10);//Top
+	collidePlane(index, 1, 0, 0, 5);//Left Wall
+	collidePlane(index, -1, 0, 0, 5);//Right Wall
+	collidePlane(index, 0, 0, 1, 5);//Depht Wall
+	collidePlane(index, 0, 0, -1, 5);//Front Wall
 }
 
 void PhysicsInit() {
@@ -112,7 +184,9 @@ void PhysicsUpdate(float dt) {
 	//TODO
 	particleToFloatConverter();
 	ClothMesh::updateClothMesh(vertArray);
-	
+	boxCollision(dt);//Dt de moment
+	collideSphere(dt);
+
 }
 void PhysicsCleanup() {
 	//TODO
