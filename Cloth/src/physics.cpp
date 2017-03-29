@@ -71,20 +71,36 @@ int col = 14, row = 18;
 int clothLength = col*row;
 float* clothArray = new float[clothLength * 3];
 
+class Particle{
+	public:
+	glm::vec3 pos;
+	glm::vec3 prePos;
+	glm::vec3 velocity;
+};
+
+Particle* cloth = new Particle[252];
+float* vertArray = new float[252 * 3];
+
 void initializeCloth() {
 	for (int i = 0; i < row; ++i) {
 		for (int j = 0; j < col; ++j) {
 			if (i == 0 && j == 0) {
-				clothArray[0] = 0;
-				clothArray[1] = 5;
-				clothArray[2] = 0;
+				cloth[0].pos = { 0,5,0 };
 			}
 			else {
-				clothArray[(i*col + j) * 3 + 0] = clothArray[0] + j*0.2;
-				clothArray[(i*col + j) * 3 + 1] = clothArray[1];
-				clothArray[(i*col + j) * 3 + 2] = clothArray[2] + i*0.2;
+				cloth[i*col + j].pos = { cloth[0].pos.x + j*0.2 ,cloth[0].pos.y ,cloth[0].pos.z + i*0.2 };
 			}
 		}
+	}
+}
+
+
+
+void particleToFloatConverter() {
+	for (int i = 0; i < 252; ++i) {
+		vertArray[i * 3 + 0] = cloth[i].pos.x;
+		vertArray[i * 3 + 1] = cloth[i].pos.y;
+		vertArray[i * 3 + 2] = cloth[i].pos.z;
 	}
 }
 
@@ -94,7 +110,8 @@ void PhysicsInit() {
 }
 void PhysicsUpdate(float dt) {
 	//TODO
-	ClothMesh::updateClothMesh(clothArray);
+	particleToFloatConverter();
+	ClothMesh::updateClothMesh(vertArray);
 	
 }
 void PhysicsCleanup() {
