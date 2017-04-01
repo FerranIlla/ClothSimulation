@@ -90,12 +90,12 @@ void initializeCloth() {
 		for (int j = 0; j < col; ++j) {
 			if (i == 0 && j == 0) {
 				cloth[0].pos = { 0,5,0 };
-				cloth[0].prePos = cloth[0].pos;
+				cloth[0].prePos = {cloth[0].pos.x, cloth[0].pos.y - 0.1,cloth[0].pos.z};
 				cloth[0].velocity = { 0,0,0 };
 			}
 			else {
 				cloth[i*col + j].pos = { cloth[0].pos.x + j*0.2 ,cloth[0].pos.y ,cloth[0].pos.z + i*0.2 };
-				cloth[0].prePos = cloth[i*col + j].pos;
+				cloth[i*col + j].prePos = { cloth[0].pos.x + j*0.2 ,cloth[0].pos.y - 0.1,cloth[0].pos.z + i*0.2 };
 				cloth[0].velocity = { 0,0,0 };
 			}
 		}
@@ -113,24 +113,22 @@ void particleToFloatConverter() {
 glm::vec3 tempParticlePos;
 void moveParticle(int index, float time) {
 	//VERLET SOLVER
-		//actualitzar la posició
-		tempParticlePos.x = cloth[index].pos.x;
-		tempParticlePos.y = cloth[index].pos.y;
-		tempParticlePos.z = cloth[index].pos.z;
+	tempParticlePos = cloth[index].pos;
 
-		cloth[index].pos.x = cloth[index].pos.x + (cloth[index].pos.x - cloth[index].prePos.x);
-		cloth[index].pos.y = cloth[index].pos.y + (cloth[index].pos.y - cloth[index].prePos.y) - gravity * (time * time);
-		cloth[index].pos.z = cloth[index].pos.z + (cloth[index].pos.z - cloth[index].prePos.z);
 
-		cloth[index].prePos.x = tempParticlePos.x;
-		cloth[index].prePos.y = tempParticlePos.y;
-		cloth[index].prePos.z = tempParticlePos.z;
+	cloth[index].pos.x = cloth[index].pos.x + (cloth[index].pos.x - cloth[index].prePos.x);
+	cloth[index].pos.y = cloth[index].pos.y + (cloth[index].pos.y - cloth[index].prePos.y) - gravity * (time * time);
+	cloth[index].pos.z = cloth[index].pos.z + (cloth[index].pos.z - cloth[index].prePos.z);
 
-		cloth[index].velocity.x = (cloth[index].pos.x + cloth[index].prePos.x) / time;
-		cloth[index].velocity.y = (cloth[index].pos.y + cloth[index].prePos.y) / time;
-		cloth[index].velocity.z = (cloth[index].pos.z + cloth[index].prePos.z) / time;
+	cloth[index].prePos = tempParticlePos;
+
+
+	cloth[index].velocity.x = (cloth[index].pos.x + cloth[index].prePos.x) / time;
+	cloth[index].velocity.y = (cloth[index].pos.y + cloth[index].prePos.y) / time;
+	cloth[index].velocity.z = (cloth[index].pos.z + cloth[index].prePos.z) / time;
 }
 
+// COLLISIONS
 void collidePlane(int index, int A, int B, int C, int d) {
 	glm::vec3 normal = { A, B, C };
 	float dotProdAct = glm::dot(normal, cloth[index].pos);
@@ -199,6 +197,8 @@ void boxCollision(int index) {
 	collidePlane(index, 0, 0, -1, 5);//Front Wall
 }
 
+
+//PHYSICS MAIN FUNCTIONS
 void PhysicsInit() {
 	//TODO
 	initializeCloth();
@@ -208,7 +208,7 @@ void PhysicsUpdate(float dt) {
 	for (int i = 0; i < 252; ++i) {
 		moveParticle(i, dt);
 		boxCollision(i);
-		//collideSphere(i);
+		collideSphere(i);
 	}
 	particleToFloatConverter();
 	ClothMesh::updateClothMesh(vertArray);
