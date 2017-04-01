@@ -15,6 +15,7 @@ bool show_test_window = false;
 
 glm::vec3 spherePos(0.f, 3.f, 0.f);
 float sphereRadius = 1.f;
+float gravity = 9.8f;
 
 namespace Sphere {
 	extern void setupSphere(glm::vec3 pos = glm::vec3(0.f, 1.f, 0.f), float radius = 1.f);
@@ -89,9 +90,13 @@ void initializeCloth() {
 		for (int j = 0; j < col; ++j) {
 			if (i == 0 && j == 0) {
 				cloth[0].pos = { 0,5,0 };
+				cloth[0].prePos = cloth[0].pos;
+				cloth[0].velocity = { 0,0,0 };
 			}
 			else {
 				cloth[i*col + j].pos = { cloth[0].pos.x + j*0.2 ,cloth[0].pos.y ,cloth[0].pos.z + i*0.2 };
+				cloth[0].prePos = cloth[i*col + j].pos;
+				cloth[0].velocity = { 0,0,0 };
 			}
 		}
 	}
@@ -103,6 +108,27 @@ void particleToFloatConverter() {
 		vertArray[i * 3 + 1] = cloth[i].pos.y;
 		vertArray[i * 3 + 2] = cloth[i].pos.z;
 	}
+}
+
+glm::vec3 tempParticlePos;
+void moveParticle(int index, float time) {
+	//VERLET SOLVER
+		//actualitzar la posició
+		tempParticlePos.x = cloth[index].pos.x;
+		tempParticlePos.y = cloth[index].pos.y;
+		tempParticlePos.z = cloth[index].pos.z;
+
+		cloth[index].pos.x = cloth[index].pos.x + (cloth[index].pos.x - cloth[index].prePos.x);
+		cloth[index].pos.y = cloth[index].pos.y + (cloth[index].pos.y - cloth[index].prePos.y) - gravity * (time * time);
+		cloth[index].pos.z = cloth[index].pos.z + (cloth[index].pos.z - cloth[index].prePos.z);
+
+		cloth[index].prePos.x = tempParticlePos.x;
+		cloth[index].prePos.y = tempParticlePos.y;
+		cloth[index].prePos.z = tempParticlePos.z;
+
+		cloth[index].velocity.x = (cloth[index].pos.x + cloth[index].prePos.x) / time;
+		cloth[index].velocity.y = (cloth[index].pos.y + cloth[index].prePos.y) / time;
+		cloth[index].velocity.z = (cloth[index].pos.z + cloth[index].prePos.z) / time;
 }
 
 void collidePlane(int index, int A, int B, int C, int d) {
@@ -120,8 +146,6 @@ void collidePlane(int index, int A, int B, int C, int d) {
 
 float a, b, c, resPos, resNeg, res, x, y, z; //variables for collide sphere
 void collideSphere(int index) {
-
-
 	a = (cloth[index].pos.x - cloth[index].prePos.x) * (cloth[index].pos.x - cloth[index].prePos.x) +
 		(cloth[index].pos.y - cloth[index].prePos.y) * (cloth[index].pos.y - cloth[index].prePos.y) +
 		(cloth[index].pos.z - cloth[index].prePos.z) * (cloth[index].pos.z - cloth[index].prePos.z);
@@ -166,7 +190,6 @@ void collideSphere(int index) {
 	}
 }
 
-
 void boxCollision(int index) {
 	collidePlane(index, 0, 1, 0, 0);//Ground
 	collidePlane(index, 0, -1, 0, 10);//Top
@@ -182,10 +205,15 @@ void PhysicsInit() {
 }
 void PhysicsUpdate(float dt) {
 	//TODO
+	for (int i = 0; i < 252; ++i) {
+		moveParticle(i, dt);
+		boxCollision(i);
+		//collideSphere(i);
+	}
 	particleToFloatConverter();
 	ClothMesh::updateClothMesh(vertArray);
-	boxCollision(dt);//Dt de moment
-	collideSphere(dt);
+	
+	
 
 }
 void PhysicsCleanup() {
