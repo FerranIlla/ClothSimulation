@@ -85,6 +85,7 @@ class Particle{
 Particle* cloth = new Particle[252];
 float* vertArray = new float[252 * 3];
 
+
 void initializeCloth() {
 	for (int i = 0; i < row; ++i) {
 		for (int j = 0; j < col; ++j) {
@@ -208,7 +209,7 @@ void PhysicsUpdate(float dt) {
 	for (int i = 0; i < 252; ++i) {
 		moveParticle(i, dt);
 		boxCollision(i);
-		//collideSphere(i);
+		collideSphere(i);
 	}
 	particleToFloatConverter();
 	ClothMesh::updateClothMesh(vertArray);
