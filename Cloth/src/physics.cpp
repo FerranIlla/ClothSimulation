@@ -18,7 +18,7 @@ float sphereRadius = 1.f;
 float gravity = 9.8f;
 
 namespace Sphere {
-	extern void setupSphere(glm::vec3 pos = glm::vec3(0.f, 1.f, 0.f), float radius = 1.f);
+	extern void setupSphere(glm::vec3 pos = spherePos, float radius = sphereRadius);
 	extern void cleanupSphere();
 	extern void updateSphere(glm::vec3 pos, float radius = 1.f);
 	extern void drawSphere();
@@ -80,11 +80,12 @@ class Particle{
 	glm::vec3 pos;
 	glm::vec3 prePos;
 	glm::vec3 velocity;
+	glm::vec3 totalForce;
 };
 
 Particle* cloth = new Particle[252];
 float* vertArray = new float[252 * 3];
-
+float springLenght = 0.2f; 
 
 void initializeCloth() {
 	for (int i = 0; i < row; ++i) {
@@ -95,8 +96,8 @@ void initializeCloth() {
 				cloth[0].velocity = { 0,0,0 };
 			}
 			else {
-				cloth[i*col + j].pos = { cloth[0].pos.x + j*0.2 ,cloth[0].pos.y ,cloth[0].pos.z + i*0.2 };
-				cloth[i*col + j].prePos = { cloth[0].pos.x + j*0.2 ,cloth[0].pos.y - 0.1,cloth[0].pos.z + i*0.2 };
+				cloth[i*col + j].pos = { cloth[0].pos.x + j*springLenght ,cloth[0].pos.y ,cloth[0].pos.z + i*springLenght };
+				cloth[i*col + j].prePos = { cloth[0].pos.x + j*springLenght ,cloth[0].pos.y - 0.1,cloth[0].pos.z + i*springLenght };
 				cloth[0].velocity = { 0,0,0 };
 			}
 		}
@@ -198,6 +199,21 @@ void boxCollision(int index) {
 	collidePlane(index, 0, 0, -1, 5);//Front Wall
 }
 
+float ke = 0.5f;
+float kb = 0.5f;
+glm::vec3 neighbourSpringForce(int index1, int index2) {
+	glm::vec3 finalForce;
+	float modul = glm::distance(cloth[index1].pos, cloth[index2].pos);
+	glm::vec3 velVec = cloth[index1].velocity - cloth[index2].velocity;
+	glm::vec3 vecPos = cloth[index1].pos - cloth[index2].pos;
+	glm::vec3 vecToDot = ke * (modul - springLenght) + kb * (velVec);
+	glm::vec3 unitVec = vecPos / modul;
+	float dotVec = glm::dot(vecToDot, unitVec);
+
+	finalForce = -dotVec * unitVec;
+	
+	return finalForce;
+}
 
 //PHYSICS MAIN FUNCTIONS
 void PhysicsInit() {
