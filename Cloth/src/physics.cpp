@@ -72,8 +72,7 @@ void renderPrims() {
 
 
 int col = 14, row = 18;
-int clothLength = col*row;
-float* clothArray = new float[clothLength * 3];
+int clothLength = col*row; // 14*18=252
 
 class Particle{
 	public:
@@ -83,8 +82,8 @@ class Particle{
 	glm::vec3 totalForce;
 };
 
-Particle* cloth = new Particle[252];
-float* vertArray = new float[252 * 3];
+Particle* cloth = new Particle[clothLength];
+float* vertArray = new float[clothLength * 3];
 float springLenght = 0.2f; 
 
 void initializeCloth() {
@@ -201,7 +200,7 @@ void boxCollision(int index) {
 
 float ke = 0.5f;
 float kb = 0.5f;
-glm::vec3 neighbourSpringForce(int index1, int index2) {
+glm::vec3 neighbourSpringForce(int index1, int index2) { //retorna la força que rep la particula d'index 1 respecte la 2
 	
 	float modul = glm::distance(cloth[index1].pos, cloth[index2].pos);
 	glm::vec3 velVec = cloth[index1].velocity - cloth[index2].velocity;
@@ -210,9 +209,9 @@ glm::vec3 neighbourSpringForce(int index1, int index2) {
 	glm::vec3 unitVec = vecPos / modul;
 	float dotVec = glm::dot(vecToDot, unitVec);
 
-	glm::vec3 finalForce = -dotVec * unitVec;
+	glm::vec3 force = -dotVec * unitVec;
 	
-	return finalForce;
+	return force;
 }
 
 //PHYSICS MAIN FUNCTIONS
@@ -225,9 +224,9 @@ void PhysicsUpdate(float dt) {
 	for (int i = 0; i < 252; ++i) {
 		moveParticle(i, dt);
 		boxCollision(i);
-		collideSphere(i);
-		for (int j = 1; i < 252; ++i)
-			neighbourSpringForce(i, j);
+		if(renderSphere) collideSphere(i);
+		/*for (int j = 1; i < 252; ++i)
+			neighbourSpringForce(i, j);*/
 	}
 	particleToFloatConverter();
 	ClothMesh::updateClothMesh(vertArray);
@@ -237,6 +236,8 @@ void PhysicsUpdate(float dt) {
 }
 void PhysicsCleanup() {
 	//TODO
+	delete[] cloth;
+	delete[] vertArray;
 }
 
 void GUI() {
