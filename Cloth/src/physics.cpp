@@ -7,7 +7,7 @@
 #include <iostream>
 
 //Boolean variables allow to show/hide the primitives
-bool renderSphere = true;
+bool renderSphere = false;
 bool renderCapsule = false;
 bool renderParticles = false;
 bool renderCloth = true;
@@ -198,9 +198,15 @@ void boxCollision(int index) {
 	collidePlane(index, 0, 0, -1, 5);//Front Wall
 }
 
-float ke = 0.5f;
-float kb = 0.5f;
-glm::vec3 neighbourSpringForce(int index1, int index2) { //retorna la força que rep la particula d'index 1 respecte la 2
+float ke = 1000.f;//500-1000
+float kb = 50.f;//30-70
+//float keStruc = 1000.f;//500-1000
+//float kbStruc = 50.f;//30-70
+//float keShear = 1000.f;//500-1000
+//float kbShear = 50.f;//30-70
+//float keBend = 1000.f;//500-1000
+//float kbBend = 50.f;//30-70
+glm::vec3 neighbourSpringForce(int index1, int index2/*, float ke, float kb*/) { //retorna la força que rep la particula d'index 1 respecte la 2
 	
 	float modul = glm::distance(cloth[index1].pos, cloth[index2].pos);
 	glm::vec3 velVec = cloth[index1].velocity - cloth[index2].velocity;
@@ -221,12 +227,14 @@ void PhysicsInit() {
 }
 void PhysicsUpdate(float dt) {
 	//TODO
-	for (int i = 0; i < 252; ++i) {
-		moveParticle(i, dt);
-		boxCollision(i);
-		if(renderSphere) collideSphere(i);
-		/*for (int j = 1; i < 252; ++i)
-			neighbourSpringForce(i, j);*/
+	for (int i = 0; i < clothLength; ++i) {
+		if (i != 0 && i != 13) {
+			moveParticle(i, dt);
+			boxCollision(i);
+			if (renderSphere) collideSphere(i);
+			for (int j = 1; j < clothLength; ++j)
+				neighbourSpringForce(i, j);
+		}
 	}
 	particleToFloatConverter();
 	ClothMesh::updateClothMesh(vertArray);
