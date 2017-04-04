@@ -7,7 +7,7 @@
 #include <iostream>
 
 //Boolean variables allow to show/hide the primitives
-bool renderSphere = false;
+bool renderSphere = true;
 bool renderCapsule = false;
 bool renderParticles = false;
 bool renderCloth = true;
@@ -91,12 +91,12 @@ void initializeCloth() {
 		for (int j = 0; j < col; ++j) {
 			if (i == 0 && j == 0) {
 				cloth[0].pos = { 0,5,0 };
-				cloth[0].prePos = {cloth[0].pos.x, cloth[0].pos.y - 0.1,cloth[0].pos.z};
+				cloth[0].prePos = {cloth[0].pos.x, cloth[0].pos.y,cloth[0].pos.z};
 				cloth[0].velocity = { 0,0,0 };
 			}
 			else {
 				cloth[i*col + j].pos = { cloth[0].pos.x + j*springLenght ,cloth[0].pos.y ,cloth[0].pos.z + i*springLenght };
-				cloth[i*col + j].prePos = { cloth[0].pos.x + j*springLenght ,cloth[0].pos.y - 0.1,cloth[0].pos.z + i*springLenght };
+				cloth[i*col + j].prePos = { cloth[0].pos.x + j*springLenght ,cloth[0].pos.y,cloth[0].pos.z + i*springLenght };
 				cloth[0].velocity = { 0,0,0 };
 			}
 		}
