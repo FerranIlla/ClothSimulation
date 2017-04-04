@@ -7,7 +7,7 @@
 #include <iostream>
 
 //Boolean variables allow to show/hide the primitives
-bool renderSphere = false;
+bool renderSphere = true;
 bool renderCapsule = false;
 bool renderParticles = false;
 bool renderCloth = true;
@@ -15,7 +15,7 @@ bool show_test_window = false;
 
 glm::vec3 spherePos(0.f, 3.f, 0.f);
 float sphereRadius = 1.f;
-float gravity = 9.8f;
+glm::vec3 gravity = { 0, -9.8f, 0 };
 
 namespace Sphere {
 	extern void setupSphere(glm::vec3 pos = spherePos, float radius = sphereRadius);
@@ -84,25 +84,19 @@ class Particle{
 
 Particle* cloth = new Particle[clothLength];
 float* vertArray = new float[clothLength * 3];
-float springLenght = 0.2f; 
+float springLength = 0.3f; //max = 0.5
 
 void initializeCloth() {
+	cloth[0].pos = { -(13*springLength/2),7,-(17 * springLength/2) };
 	for (int i = 0; i < row; ++i) {
 		for (int j = 0; j < col; ++j) {
-			if (i == 0 && j == 0) {
-				cloth[0].pos = { 0,5,0 };
-				cloth[0].prePos = {cloth[0].pos.x, cloth[0].pos.y,cloth[0].pos.z};
-				cloth[0].velocity = { 0,0,0 };
-			}
-			else {
-				cloth[i*col + j].pos = { cloth[0].pos.x + j*springLenght ,cloth[0].pos.y ,cloth[0].pos.z + i*springLenght };
-				cloth[i*col + j].prePos = { cloth[0].pos.x + j*springLenght ,cloth[0].pos.y,cloth[0].pos.z + i*springLenght };
-				cloth[0].velocity = { 0,0,0 };
-			}
+			cloth[i*col + j].pos = { cloth[0].pos.x + j*springLength ,cloth[0].pos.y ,cloth[0].pos.z + i*springLength };
+			cloth[i*col + j].prePos = cloth[i*col + j].pos;
+			cloth[i*col + j].velocity = { 0,0,0 };
+			cloth[i*col + j].totalForce = gravity;
 		}
 	}
 }
-
 void particleToFloatConverter() {
 	for (int i = 0; i < 252; ++i) {
 		vertArray[i * 3 + 0] = cloth[i].pos.x;
@@ -111,23 +105,51 @@ void particleToFloatConverter() {
 	}
 }
 
-glm::vec3 tempParticlePos;
-void moveParticle(int index, float time) {
-	//VERLET SOLVER
-	tempParticlePos = cloth[index].pos;
+// FORCES
+float keStruc = 1000.f;//500-1000
+float kbStruc = 50.f;//30-70
+float keShear = 1000.f;//500-1000
+float kbShear = 50.f;//30-70
+float keBend = 1000.f;//500-1000
+float kbBend = 50.f;//30-70
+glm::vec3 neighbourSpringForce(int index1, int index2, float ke, float kb) { //retorna la força que rep la particula d'index 1 respecte la 2
+	//passar distancia per parametre? probablement
+	float modul = glm::distance(cloth[index1].pos, cloth[index2].pos);
+	glm::vec3 velVec = cloth[index1].velocity - cloth[index2].velocity;
+	glm::vec3 vecPos = cloth[index1].pos - cloth[index2].pos;
+	glm::vec3 vecToDot = ke * (modul - springLength) + kb * (velVec);
+	glm::vec3 unitVec = vecPos / modul;
+	float dotVec = glm::dot(vecToDot, unitVec);
 
+	glm::vec3 force = -dotVec * unitVec;
 
-	cloth[index].pos.x = cloth[index].pos.x + (cloth[index].pos.x - cloth[index].prePos.x);
-	cloth[index].pos.y = cloth[index].pos.y + (cloth[index].pos.y - cloth[index].prePos.y) - gravity * (time * time);
-	cloth[index].pos.z = cloth[index].pos.z + (cloth[index].pos.z - cloth[index].prePos.z);
-
-	cloth[index].prePos = tempParticlePos;
-
-
-	cloth[index].velocity.x = (cloth[index].pos.x + cloth[index].prePos.x) / time;
-	cloth[index].velocity.y = (cloth[index].pos.y + cloth[index].prePos.y) / time;
-	cloth[index].velocity.z = (cloth[index].pos.z + cloth[index].prePos.z) / time;
+	return force;
 }
+
+void addAForces() {
+	//tindrà una forma semblant a aixo
+	//cloth[0].totalForce += neighbourSpringForce(...);
+}
+void addBForces() {}
+void addCForces() {}
+
+//	MOVEMENT
+glm::vec3 tempParticlePos;
+void moveParticle(float time) {
+	//VERLET SOLVER
+	for (int i = 0; i < clothLength; ++i) {
+		tempParticlePos = cloth[i].pos;
+
+		cloth[i].pos = cloth[i].pos + (cloth[i].pos - cloth[i].prePos) + cloth[i].totalForce * (time*time);
+
+		cloth[i].prePos = tempParticlePos;
+
+		cloth[i].velocity = (cloth[i].pos + cloth[i].prePos) / time;
+	}
+	cloth[0].pos = cloth[0].prePos;
+	cloth[13].pos = cloth[13].prePos;
+}
+
 
 // COLLISIONS
 void collidePlane(int index, int A, int B, int C, int d) {
@@ -144,98 +166,77 @@ void collidePlane(int index, int A, int B, int C, int d) {
 }
 
 float a, b, c, resPos, resNeg, res, x, y, z; //variables for collide sphere
-void collideSphere(int index) {
-	a = (cloth[index].pos.x - cloth[index].prePos.x) * (cloth[index].pos.x - cloth[index].prePos.x) +
-		(cloth[index].pos.y - cloth[index].prePos.y) * (cloth[index].pos.y - cloth[index].prePos.y) +
-		(cloth[index].pos.z - cloth[index].prePos.z) * (cloth[index].pos.z - cloth[index].prePos.z);
-	b = 2 * ((cloth[index].pos.x - cloth[index].prePos.x) * (cloth[index].prePos.x - spherePos.x) +
-		(cloth[index].pos.y - cloth[index].prePos.y) * (cloth[index].prePos.y - spherePos.y) +
-		(cloth[index].pos.z - cloth[index].prePos.z) * (cloth[index].prePos.z - spherePos.z));
-	c = spherePos.x * spherePos.x + spherePos.y * spherePos.y + spherePos.z * spherePos.z + cloth[index].prePos.x *
-		cloth[index].prePos.x + cloth[index].prePos.y * cloth[index].prePos.y + cloth[index].prePos.z *
-		cloth[index].prePos.z - 2 * (spherePos.x * cloth[index].prePos.x + spherePos.y * cloth[index].prePos.y +
-			spherePos.z * cloth[index].prePos.z) - sphereRadius;
+void collideSphere() {
+	for (int i = 0; i < clothLength; ++i) {
+		a = (cloth[i].pos.x - cloth[i].prePos.x) * (cloth[i].pos.x - cloth[i].prePos.x) +
+			(cloth[i].pos.y - cloth[i].prePos.y) * (cloth[i].pos.y - cloth[i].prePos.y) +
+			(cloth[i].pos.z - cloth[i].prePos.z) * (cloth[i].pos.z - cloth[i].prePos.z);
+		b = 2 * ((cloth[i].pos.x - cloth[i].prePos.x) * (cloth[i].prePos.x - spherePos.x) +
+			(cloth[i].pos.y - cloth[i].prePos.y) * (cloth[i].prePos.y - spherePos.y) +
+			(cloth[i].pos.z - cloth[i].prePos.z) * (cloth[i].prePos.z - spherePos.z));
+		c = spherePos.x * spherePos.x + spherePos.y * spherePos.y + spherePos.z * spherePos.z + cloth[i].prePos.x *
+			cloth[i].prePos.x + cloth[i].prePos.y * cloth[i].prePos.y + cloth[i].prePos.z *
+			cloth[i].prePos.z - 2 * (spherePos.x * cloth[i].prePos.x + spherePos.y * cloth[i].prePos.y +
+				spherePos.z * cloth[i].prePos.z) - sphereRadius;
 
-	if (b * b - 4 * a * c >= 0) {
-		glm::vec3 auxil, colis;
-		resPos = (-b + glm::sqrt(b*b - 4 * a * c)) / (2 * a);
-		resNeg = (-b - glm::sqrt(b*b - 4 * a * c)) / (2 * a);
-		x = cloth[index].pos.x - cloth[index].prePos.x;
-		y = cloth[index].pos.y - cloth[index].prePos.y;
-		z = cloth[index].pos.z - cloth[index].prePos.z;
-		glm::vec3 coli1 = { cloth[index].prePos.x + x * resPos, cloth[index].prePos.y + y * resPos, cloth[index].prePos.z + z * resPos };
-		glm::vec3 coli2 = { cloth[index].prePos.x + x * resNeg, cloth[index].prePos.y + y * resNeg, cloth[index].prePos.z + z * resNeg };
-		if (glm::distance(cloth[index].pos, coli1) <= glm::distance(cloth[index].pos, coli2)) {
-			res = resPos;
-			colis = coli1;
-		}
-		else {
-			res = resNeg;
-			colis = coli2;
-		}
+		if (b * b - 4 * a * c >= 0) {
+			glm::vec3 auxil, colis;
+			resPos = (-b + glm::sqrt(b*b - 4 * a * c)) / (2 * a);
+			resNeg = (-b - glm::sqrt(b*b - 4 * a * c)) / (2 * a);
+			x = cloth[i].pos.x - cloth[i].prePos.x;
+			y = cloth[i].pos.y - cloth[i].prePos.y;
+			z = cloth[i].pos.z - cloth[i].prePos.z;
+			glm::vec3 coli1 = { cloth[i].prePos.x + x * resPos, cloth[i].prePos.y + y * resPos, cloth[i].prePos.z + z * resPos };
+			glm::vec3 coli2 = { cloth[i].prePos.x + x * resNeg, cloth[i].prePos.y + y * resNeg, cloth[i].prePos.z + z * resNeg };
+			if (glm::distance(cloth[i].pos, coli1) <= glm::distance(cloth[i].pos, coli2)) {
+				res = resPos;
+				colis = coli1;
+			}
+			else {
+				res = resNeg;
+				colis = coli2;
+			}
 
-		glm::vec3 colisNormal = glm::normalize(colis - spherePos);
-		float d = colisNormal.x * colis.x + colisNormal.y * colis.y + colisNormal.z * colis.z;
-		d = -d;
+			glm::vec3 colisNormal = glm::normalize(colis - spherePos);
+			float d = colisNormal.x * colis.x + colisNormal.y * colis.y + colisNormal.z * colis.z;
+			d = -d;
 
-		float actAux = glm::dot(colisNormal, cloth[index].pos);
-		float prevAux = glm::dot(colisNormal, cloth[index].prePos);
-		float dotProdSpeed = glm::dot(colisNormal, cloth[index].velocity);
-		float checkCol = (actAux + d) * (prevAux + d);
-		if (checkCol <= 0) {
-			cloth[index].pos = cloth[index].pos - 2 * (actAux + d) * colisNormal;
-			cloth[index].velocity = cloth[index].velocity - 2 * dotProdSpeed * colisNormal;
+			float actAux = glm::dot(colisNormal, cloth[i].pos);
+			float prevAux = glm::dot(colisNormal, cloth[i].prePos);
+			float dotProdSpeed = glm::dot(colisNormal, cloth[i].velocity);
+			float checkCol = (actAux + d) * (prevAux + d);
+			if (checkCol <= 0) {
+				cloth[i].pos = cloth[i].pos - 2 * (actAux + d) * colisNormal;
+				cloth[i].velocity = cloth[i].velocity - 2 * dotProdSpeed * colisNormal;
+			}
 		}
 	}
 }
 
-void boxCollision(int index) {
-	collidePlane(index, 0, 1, 0, 0);//Ground
-	collidePlane(index, 0, -1, 0, 10);//Top
-	collidePlane(index, 1, 0, 0, 5);//Left Wall
-	collidePlane(index, -1, 0, 0, 5);//Right Wall
-	collidePlane(index, 0, 0, 1, 5);//Depht Wall
-	collidePlane(index, 0, 0, -1, 5);//Front Wall
+void boxCollision() {
+	for (int i = 0; i < clothLength; ++i) {
+		collidePlane(i, 0, 1, 0, 0);//Ground
+		collidePlane(i, 0, -1, 0, 10);//Top
+		collidePlane(i, 1, 0, 0, 5);//Left Wall
+		collidePlane(i, -1, 0, 0, 5);//Right Wall
+		collidePlane(i, 0, 0, 1, 5);//Depht Wall
+		collidePlane(i, 0, 0, -1, 5);//Front Wall
+	}
 }
 
-float ke = 1000.f;//500-1000
-float kb = 50.f;//30-70
-//float keStruc = 1000.f;//500-1000
-//float kbStruc = 50.f;//30-70
-//float keShear = 1000.f;//500-1000
-//float kbShear = 50.f;//30-70
-//float keBend = 1000.f;//500-1000
-//float kbBend = 50.f;//30-70
-glm::vec3 neighbourSpringForce(int index1, int index2/*, float ke, float kb*/) { //retorna la força que rep la particula d'index 1 respecte la 2
-	
-	float modul = glm::distance(cloth[index1].pos, cloth[index2].pos);
-	glm::vec3 velVec = cloth[index1].velocity - cloth[index2].velocity;
-	glm::vec3 vecPos = cloth[index1].pos - cloth[index2].pos;
-	glm::vec3 vecToDot = ke * (modul - springLenght) + kb * (velVec);
-	glm::vec3 unitVec = vecPos / modul;
-	float dotVec = glm::dot(vecToDot, unitVec);
 
-	glm::vec3 force = -dotVec * unitVec;
-	
-	return force;
-}
 
 //PHYSICS MAIN FUNCTIONS
 void PhysicsInit() {
-	//TODO
 	initializeCloth();
 }
 void PhysicsUpdate(float dt) {
-	//TODO
-	for (int i = 0; i < clothLength; ++i) {
-		if (i != 0 && i != 13) {
-			moveParticle(i, dt);
-			boxCollision(i);
-			if (renderSphere) collideSphere(i);
-			for (int j = 1; j < clothLength; ++j)
-				neighbourSpringForce(i, j);
-		}
-	}
+	//calcular forces
+	moveParticle(dt);
+	boxCollision();
+	if (renderSphere) collideSphere();
+	//reiniciar forces
+	
 	particleToFloatConverter();
 	ClothMesh::updateClothMesh(vertArray);
 	
