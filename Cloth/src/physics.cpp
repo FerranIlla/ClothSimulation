@@ -120,7 +120,7 @@ glm::vec3 neighbourSpringForce(int index1, int index2, float ke, float kb, float
 	glm::vec3 vecToDot = ke * (modul - L) + kb * (cloth[index1].velocity - cloth[index2].velocity);
 	float dotVec = glm::dot(vecToDot, (cloth[index1].pos - cloth[index2].pos) / modul);
 
-	glm::vec3 force = -dotVec * (cloth[index1].pos - cloth[index2].pos) / modul;
+	glm::vec3 force = (-dotVec) * (cloth[index1].pos - cloth[index2].pos) / modul;
 
 	return force;
 }
@@ -133,11 +133,84 @@ void addShearForces() {
 
 }
 void addBendingForces() {
+	//Aplicació de la força a les partícules interiors( les que tenen 4 springs cada una)
 	for (int i = 2; i < row - 2; i++) {
 		for (int j = 2; j < col - 2; j++) {
-			cloth[i*col + j].totalForce += neighbourSpringForce(i*col + j, i*col + j, keBend, keStruc, springLength * 2);
+			cloth[i*col + j].totalForce += neighbourSpringForce(i*col + j, (i + 2)*col + j, keBend, keStruc, springLength * 2);
+			cloth[i*col + j].totalForce += neighbourSpringForce(i*col + j, (i - 2)*col + j, keBend, keStruc, springLength * 2);
+			cloth[i*col + j].totalForce += neighbourSpringForce(i*col + j, i*col + (j + 2), keBend, keStruc, springLength * 2);
+			cloth[i*col + j].totalForce += neighbourSpringForce(i*col + j, i*col + (j - 2), keBend, keStruc, springLength * 2);
 		}
 	}
+	//Aplicació de la força a les partícules corresponents a les files i columnes 1(per cada hi ha 14 part amb 3 springs i 4 amb 2 springs)
+	for (int i = 1; i < row - 1; i++) {
+		for (int j = 1; j < col - 1; j++) {
+			//Apliquem la força a les 4 partícules amb només dos springs
+			if (i < 2 && j < 2 && i > row - 2 && j > col - 2) {
+				if (i*col + j == 1*col + 1) {
+					cloth[i*col + j].totalForce += neighbourSpringForce(i*col + j, i*col + (j + 2), keBend, keStruc, springLength * 2);
+					cloth[i*col + j].totalForce += neighbourSpringForce(i*col + j, (i + 2)*col + j, keBend, keStruc, springLength * 2);
+				}
+				else if (i*col + j == (row - 1)*col + 1) {
+					cloth[i*col + j].totalForce += neighbourSpringForce(i*col + j, i*col + (j - 2), keBend, keStruc, springLength * 2);
+					cloth[i*col + j].totalForce += neighbourSpringForce(i*col + j, (i + 2)*col + j, keBend, keStruc, springLength * 2);
+				}
+				else if (i*col + j == 1 * col + (col - 1)) {
+					cloth[i*col + j].totalForce += neighbourSpringForce(i*col + j, i*col + (j + 2), keBend, keStruc, springLength * 2);
+					cloth[i*col + j].totalForce += neighbourSpringForce(i*col + j, (i - 2)*col + j, keBend, keStruc, springLength * 2);
+				}
+				else if (i*col + j == (row - 1)*col + (col - 1)) {
+					cloth[i*col + j].totalForce += neighbourSpringForce(i*col + j, i*col + (j - 2), keBend, keStruc, springLength * 2);
+					cloth[i*col + j].totalForce += neighbourSpringForce(i*col + j, (i - 2)*col + j, keBend, keStruc, springLength * 2);
+				}
+			}
+			//Apliquem la força a la resta
+			else if (i == 1 && j < row - 1) {
+				cloth[i*col + j].totalForce += neighbourSpringForce(i*col + j, (i + 2)*col + j, keBend, keStruc, springLength * 2);
+				cloth[i*col + j].totalForce += neighbourSpringForce(i*col + j, i*col + (j + 2), keBend, keStruc, springLength * 2);
+				cloth[i*col + j].totalForce += neighbourSpringForce(i*col + j, i*col + (j - 2), keBend, keStruc, springLength * 2);
+			}
+			else if (i < col - 1 && j == 1) {
+				cloth[i*col + j].totalForce += neighbourSpringForce(i*col + j, (i - 2)*col + j, keBend, keStruc, springLength * 2);
+				cloth[i*col + j].totalForce += neighbourSpringForce(i*col + j, (i + 2)*col + j, keBend, keStruc, springLength * 2);
+				cloth[i*col + j].totalForce += neighbourSpringForce(i*col + j, i*col + (j + 2), keBend, keStruc, springLength * 2);
+			}
+			else if (i == col - 1 && j < row - 1) {
+				cloth[i*col + j].totalForce += neighbourSpringForce(i*col + j, (i - 2)*col + j, keBend, keStruc, springLength * 2);
+				cloth[i*col + j].totalForce += neighbourSpringForce(i*col + j, i*col + (j + 2), keBend, keStruc, springLength * 2);
+				cloth[i*col + j].totalForce += neighbourSpringForce(i*col + j, i*col + (j - 2), keBend, keStruc, springLength * 2);
+			}
+			else if (i < col - 1 && j == row - 1) {
+				cloth[i*col + j].totalForce += neighbourSpringForce(i*col + j, (i - 2)*col + j, keBend, keStruc, springLength * 2);
+				cloth[i*col + j].totalForce += neighbourSpringForce(i*col + j, (i + 2)*col + j, keBend, keStruc, springLength * 2);
+				cloth[i*col + j].totalForce += neighbourSpringForce(i*col + j, i*col + (j - 2), keBend, keStruc, springLength * 2);
+			}
+		}
+	}
+	for (int i = 0; i < row; i++) {
+		for (int j = 0; j < col; j++) {
+			if (i < 1 && j < 1 && i > row && j > col) {
+				if (i*col + j == 0 * col + 0) {
+					cloth[i*col + j].totalForce += neighbourSpringForce(i*col + j, i*col + (j + 2), keBend, keStruc, springLength * 2);
+					cloth[i*col + j].totalForce += neighbourSpringForce(i*col + j, (i + 2)*col + j, keBend, keStruc, springLength * 2);
+				}
+				else if (i*col + j == row *col + 0) {
+					cloth[i*col + j].totalForce += neighbourSpringForce(i*col + j, i*col + (j - 2), keBend, keStruc, springLength * 2);
+					cloth[i*col + j].totalForce += neighbourSpringForce(i*col + j, (i + 2)*col + j, keBend, keStruc, springLength * 2);
+				}
+				else if (i*col + j == 0 * col + col) {
+					cloth[i*col + j].totalForce += neighbourSpringForce(i*col + j, i*col + (j + 2), keBend, keStruc, springLength * 2);
+					cloth[i*col + j].totalForce += neighbourSpringForce(i*col + j, (i - 2)*col + j, keBend, keStruc, springLength * 2);
+				}
+				else if (i*col + j == row *col + col) {
+					cloth[i*col + j].totalForce += neighbourSpringForce(i*col + j, i*col + (j - 2), keBend, keStruc, springLength * 2);
+					cloth[i*col + j].totalForce += neighbourSpringForce(i*col + j, (i - 2)*col + j, keBend, keStruc, springLength * 2);
+				}
+			}
+
+		}
+	}
+
 }
 
 //	MOVEMENT
