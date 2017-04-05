@@ -133,7 +133,11 @@ void addShearForces() {
 
 }
 void addBendingForces() {
-
+	for (int i = 2; i < row - 2; i++) {
+		for (int j = 2; j < col - 2; j++) {
+			cloth[i*col + j].totalForce += neighbourSpringForce(i*col + j, i*col + j, keBend, keStruc, springLength * 2);
+		}
+	}
 }
 
 //	MOVEMENT
@@ -163,8 +167,8 @@ void collidePlane(int index, int A, int B, int C, int d) {
 	float checkColl = (dotProdAct + d)*(dotProdPrev + d);
 
 	if (checkColl <= 0) {
-		cloth[index].pos = cloth[index].pos - 2 * (dotProdAct + d) * normal;
-		cloth[index].velocity = cloth[index].velocity - 2 * dotProdVelo * normal;
+		cloth[index].pos = cloth[index].pos - 1.5f * (dotProdAct + d) * normal;
+		cloth[index].velocity = cloth[index].velocity - 1.5f * dotProdVelo * normal;
 	}
 }
 
