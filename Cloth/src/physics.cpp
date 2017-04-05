@@ -5,6 +5,7 @@
 #include <glm\gtc\matrix_transform.hpp>
 #include <cstdio>
 #include <iostream>
+#include <math.h>
 
 //Boolean variables allow to show/hide the primitives
 bool renderSphere = true;
@@ -85,6 +86,7 @@ class Particle{
 Particle* cloth = new Particle[clothLength];
 float* vertArray = new float[clothLength * 3];
 float springLength = 0.3f; //max = 0.5
+float diagonalSpringLength = sqrt(pow(springLength, 2) + pow(springLength, 2));
 
 void initializeCloth() {
 	cloth[0].pos = { -(13*springLength/2),7,-(17 * springLength/2) };
@@ -112,26 +114,27 @@ float keShear = 1000.f;//500-1000
 float kbShear = 50.f;//30-70
 float keBend = 1000.f;//500-1000
 float kbBend = 50.f;//30-70
-glm::vec3 neighbourSpringForce(int index1, int index2, float ke, float kb) { //retorna la força que rep la particula d'index 1 respecte la 2
+glm::vec3 neighbourSpringForce(int index1, int index2, float ke, float kb, float L) { //retorna la força que rep la particula d'index 1 respecte la 2
 	//passar distancia per parametre? probablement
 	float modul = glm::distance(cloth[index1].pos, cloth[index2].pos);
-	glm::vec3 velVec = cloth[index1].velocity - cloth[index2].velocity;
-	glm::vec3 vecPos = cloth[index1].pos - cloth[index2].pos;
-	glm::vec3 vecToDot = ke * (modul - springLength) + kb * (velVec);
-	glm::vec3 unitVec = vecPos / modul;
-	float dotVec = glm::dot(vecToDot, unitVec);
+	glm::vec3 vecToDot = ke * (modul - L) + kb * (cloth[index1].velocity - cloth[index2].velocity);
+	float dotVec = glm::dot(vecToDot, (cloth[index1].pos - cloth[index2].pos) / modul);
 
-	glm::vec3 force = -dotVec * unitVec;
+	glm::vec3 force = -dotVec * (cloth[index1].pos - cloth[index2].pos) / modul;
 
 	return force;
 }
 
-void addAForces() {
+void addStructForces() {
 	//tindrà una forma semblant a aixo
 	//cloth[0].totalForce += neighbourSpringForce(...);
 }
-void addBForces() {}
-void addCForces() {}
+void addShearForces() {
+
+}
+void addBendingForces() {
+
+}
 
 //	MOVEMENT
 glm::vec3 tempParticlePos;
