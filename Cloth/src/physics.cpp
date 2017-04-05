@@ -109,25 +109,61 @@ void particleToFloatConverter() {
 
 // FORCES
 float keStruc = 1000.f;//500-1000
-float kbStruc = 50.f;//30-70
+float kdStruc = 50.f;//30-70
 float keShear = 1000.f;//500-1000
-float kbShear = 50.f;//30-70
+float kdShear = 50.f;//30-70
 float keBend = 1000.f;//500-1000
-float kbBend = 50.f;//30-70
-glm::vec3 neighbourSpringForce(int index1, int index2, float ke, float kb, float L) { //retorna la força que rep la particula d'index 1 respecte la 2
+float kdBend = 50.f;//30-70
+glm::vec3 neighbourSpringForce(int index1, int index2, float ke, float kd, float L) { //retorna la força que rep la particula d'index 1 respecte la 2
 	//passar distancia per parametre? probablement
 	float modul = glm::distance(cloth[index1].pos, cloth[index2].pos);
-	glm::vec3 vecToDot = ke * (modul - L) + kb * (cloth[index1].velocity - cloth[index2].velocity);
-	float dotVec = glm::dot(vecToDot, (cloth[index1].pos - cloth[index2].pos) / modul);
-
-	glm::vec3 force = -dotVec * (cloth[index1].pos - cloth[index2].pos) / modul;
+	glm::vec3 vecUnitari = (cloth[index1].pos - cloth[index2].pos) / modul;
+	float dampingTerm = glm::dot(kd * (cloth[index1].velocity - cloth[index2].velocity), vecUnitari);
+	float primerTerme = ke * (modul - L) + dampingTerm;
+	//glm::vec3 vecToDot = ke * (modul - L) + kd * (cloth[index1].velocity - cloth[index2].velocity);
+	//float dotVec = glm::dot(vecToDot, (cloth[index1].pos - cloth[index2].pos) / modul);
+	//glm::vec3 force = -dotVec * (cloth[index1].pos - cloth[index2].pos) / modul;
+	glm::vec3 force = -primerTerme*vecUnitari;
 
 	return force;
 }
 
-void addStructForces() {
-	//tindrà una forma semblant a aixo
-	//cloth[0].totalForce += neighbourSpringForce(...);
+void addStructuralForces() {
+	//centrals
+	for (int i = 0; i < row; ++i) {
+		for (int j = 0; j < col; ++j) {
+			cloth[i*col + j].totalForce += neighbourSpringForce(i*col + j, (i-1)*col + j, keStruc, kdStruc, springLength);
+			cloth[i*col + j].totalForce += neighbourSpringForce(i*col + j, (i+1)*col + j, keStruc, kdStruc, springLength);
+			cloth[i*col + j].totalForce += neighbourSpringForce(i*col + j, i*col + j+1, keStruc, kdStruc, springLength);
+			cloth[i*col + j].totalForce += neighbourSpringForce(i*col + j, i*col + j-1, keStruc, kdStruc, springLength);
+		}
+	}
+	//cantonades
+	cloth[0].totalForce += neighbourSpringForce(0, 1, keStruc, kdStruc, springLength) + neighbourSpringForce(0, 14, keStruc, kdStruc, springLength);
+	cloth[13].totalForce += neighbourSpringForce(13, 12, keStruc, kdStruc, springLength) + neighbourSpringForce(13, 27, keStruc, kdStruc, springLength);
+	cloth[238].totalForce += neighbourSpringForce(238, 239, keStruc, kdStruc, springLength) + neighbourSpringForce(238, 224, keStruc, kdStruc, springLength);
+	cloth[251].totalForce += neighbourSpringForce(251, 250, keStruc, kdStruc, springLength) + neighbourSpringForce(251, 237, keStruc, kdStruc, springLength);
+	//laterals
+	for (int l1 = 1; l1 < col - 1; ++l1) {
+		cloth[l1].totalForce += neighbourSpringForce(l1, l1 - 1, keStruc, kdStruc, springLength)
+			+ neighbourSpringForce(l1, l1 + 1, keStruc, kdStruc, springLength)
+			+ neighbourSpringForce(l1, l1 + col, keStruc, kdStruc, springLength);
+	}
+	for (int l2 = 239; l2 < 251; ++l2) {
+		cloth[l2].totalForce += neighbourSpringForce(l2, l2 - 1, keStruc, kdStruc, springLength)
+			+ neighbourSpringForce(l2, l2 + 1, keStruc, kdStruc, springLength)
+			+ neighbourSpringForce(l2, l2 - col, keStruc, kdStruc, springLength);
+	}
+	for (int l3 = 1; l3 < row - 1; ++l3) {
+		cloth[l3*col].totalForce += neighbourSpringForce(l3*col, (l3-1)*col, keStruc, kdStruc, springLength)
+			+ neighbourSpringForce(l3*col, (l3 + 1)*col, keStruc, kdStruc, springLength)
+			+ neighbourSpringForce(l3*col, l3*col + 1, keStruc, kdStruc, springLength);
+	}
+	for (int l4 = 1; l4 < row - 1; ++l4) {
+		cloth[l4*col+13].totalForce += neighbourSpringForce(l4*col + 13, (l4 - 1)*col+13, keStruc, kdStruc, springLength)
+			+ neighbourSpringForce(l4*col + 13, (l4 + 1)*col+13, keStruc, kdStruc, springLength)
+			+ neighbourSpringForce(l4*col + 13, l4*col +13 - 1, keStruc, kdStruc, springLength);
+	}
 }
 void addShearForces() {
 
@@ -239,10 +275,16 @@ void PhysicsInit() {
 }
 void PhysicsUpdate(float dt) {
 	//calcular forces
+	addStructuralForces();
+
 	moveParticle(dt);
 	boxCollision();
 	if (renderSphere) collideSphere();
+
 	//reiniciar forces
+	for (int i = 0; i < clothLength; ++i) {
+		cloth[i].totalForce = gravity;
+	}
 	
 	particleToFloatConverter();
 	ClothMesh::updateClothMesh(vertArray);
