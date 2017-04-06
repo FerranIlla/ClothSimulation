@@ -8,7 +8,7 @@
 #include <math.h>
 
 //Boolean variables allow to show/hide the primitives
-bool renderSphere = true;
+bool renderSphere = false;
 bool renderCapsule = false;
 bool renderParticles = false;
 bool renderCloth = true;
@@ -108,8 +108,8 @@ void particleToFloatConverter() {
 }
 
 // FORCES
-float keStruc = 1000.f;//500-1000
-float kdStruc = 50.f;//30-70
+float keStruc = 1;// 1000.f;//500-1000
+float kdStruc = 1;// 50.f;//30-70
 float keShear = 1000.f;//500-1000
 float kdShear = 50.f;//30-70
 float keBend = 1000.f;//500-1000
@@ -130,8 +130,8 @@ glm::vec3 neighbourSpringForce(int index1, int index2, float ke, float kd, float
 
 void addStructuralForces() {
 	//centrals
-	for (int i = 0; i < row; ++i) {
-		for (int j = 0; j < col; ++j) {
+	for (int i = 1; i < row-1; ++i) {
+		for (int j = 1; j < col-1; ++j) {
 			cloth[i*col + j].totalForce += neighbourSpringForce(i*col + j, (i-1)*col + j, keStruc, kdStruc, springLength);
 			cloth[i*col + j].totalForce += neighbourSpringForce(i*col + j, (i+1)*col + j, keStruc, kdStruc, springLength);
 			cloth[i*col + j].totalForce += neighbourSpringForce(i*col + j, i*col + j+1, keStruc, kdStruc, springLength);
