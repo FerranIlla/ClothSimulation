@@ -8,7 +8,7 @@
 #include <math.h>
 
 //Boolean variables allow to show/hide the primitives
-bool renderSphere = false;
+bool renderSphere = true;
 bool renderCapsule = false;
 bool renderParticles = false;
 bool renderCloth = true;
@@ -108,8 +108,8 @@ void particleToFloatConverter() {
 }
 
 // FORCES
-float keStruc = 1;// 1000.f;//500-1000
-float kdStruc = 1;// 50.f;//30-70
+float keStruc = 50;// 1000.f;//500-1000
+float kdStruc = 10;// 50.f;//30-70
 float keShear = 1000.f;//500-1000
 float kdShear = 50.f;//30-70
 float keBend = 1000.f;//500-1000
@@ -120,10 +120,7 @@ glm::vec3 neighbourSpringForce(int index1, int index2, float ke, float kd, float
 	glm::vec3 vecUnitari = (cloth[index1].pos - cloth[index2].pos) / modul;
 	float dampingTerm = glm::dot(kd * (cloth[index1].velocity - cloth[index2].velocity), vecUnitari);
 	float primerTerme = ke * (modul - L) + dampingTerm;
-	//glm::vec3 vecToDot = ke * (modul - L) + kd * (cloth[index1].velocity - cloth[index2].velocity);
-	//float dotVec = glm::dot(vecToDot, (cloth[index1].pos - cloth[index2].pos) / modul);
-	//glm::vec3 force = -dotVec * (cloth[index1].pos - cloth[index2].pos) / modul;
-	glm::vec3 force = (-primerTerme)*vecUnitari;
+	glm::vec3 force = -primerTerme*vecUnitari;
 
 	return force;
 }
@@ -260,7 +257,7 @@ void moveParticle(float time) {
 
 		cloth[i].prePos = tempParticlePos;
 
-		cloth[i].velocity = (cloth[i].pos + cloth[i].prePos) / time;
+		cloth[i].velocity = (cloth[i].pos - cloth[i].prePos) / time;
 	}
 	cloth[0].pos = cloth[0].prePos;
 	cloth[13].pos = cloth[13].prePos;
