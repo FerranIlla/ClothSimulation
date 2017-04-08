@@ -8,9 +8,7 @@
 #include <math.h>
 
 //Boolean variables allow to show/hide the primitives
-bool renderSphere = true;
-bool renderCapsule = false;
-bool renderParticles = false;
+bool renderSphere = false;
 bool renderCloth = true;
 bool show_test_window = false;
 
@@ -18,65 +16,15 @@ glm::vec3 spherePos(0.f, 3.f, 0.f);
 float sphereRadius = 1.f;
 glm::vec3 gravity = { 0, -9.8f, 0 };
 
-namespace Sphere {
-	extern void setupSphere(glm::vec3 pos = spherePos, float radius = sphereRadius);
-	extern void cleanupSphere();
-	extern void updateSphere(glm::vec3 pos, float radius = 1.f);
-	extern void drawSphere();
-}
-namespace Capsule {
-	extern void setupCapsule(glm::vec3 posA = glm::vec3(-3.f, 2.f, -2.f), glm::vec3 posB = glm::vec3(-4.f, 2.f, 2.f), float radius = 1.f);
-	extern void cleanupCapsule();
-	extern void updateCapsule(glm::vec3 posA, glm::vec3 posB, float radius = 1.f);
-	extern void drawCapsule();
-}
-namespace LilSpheres {
-	extern const int maxParticles;
-	extern void setupParticles(int numTotalParticles, float radius = 0.05f);
-	extern void cleanupParticles();
-	extern void updateParticles(int startIdx, int count, float* array_data);
-	extern void drawParticles(int startIdx, int count);
-}
 namespace ClothMesh {
-	extern void setupClothMesh();
-	extern void cleanupClothMesh();
 	extern void updateClothMesh(float* array_data);
-	extern void drawClothMesh();
 }
-
-void setupPrims() {
-	Sphere::setupSphere();
-	Capsule::setupCapsule();
-	LilSpheres::setupParticles(LilSpheres::maxParticles);
-	ClothMesh::setupClothMesh();	
-}
-void cleanupPrims() {
-	Sphere::cleanupSphere();
-	Capsule::cleanupCapsule();
-	LilSpheres::cleanupParticles();
-	ClothMesh::cleanupClothMesh();
-}
-void renderPrims() {
-	if (renderSphere)
-		Sphere::drawSphere();
-	if (renderCapsule)
-		Capsule::drawCapsule();
-
-	if (renderParticles) {
-		LilSpheres::drawParticles(0, LilSpheres::maxParticles);
-	}
-
-	if (renderCloth)
-		ClothMesh::drawClothMesh();
-
-}
-
 
 int col = 14, row = 18;
 int clothLength = col*row; // 14*18=252
 
-class Particle{
-	public:
+class Particle {
+public:
 	glm::vec3 pos;
 	glm::vec3 prePos;
 	glm::vec3 velocity;
@@ -89,7 +37,7 @@ float springLength = 0.3f; //max = 0.5
 float diagonalSpringLength = sqrt(pow(springLength, 2) + pow(springLength, 2));
 
 void initializeCloth() {
-	cloth[0].pos = { -(13*springLength/2),7,-(17 * springLength/2) };
+	cloth[0].pos = { -(13 * springLength / 2),7,-(17 * springLength / 2) };
 	for (int i = 0; i < row; ++i) {
 		for (int j = 0; j < col; ++j) {
 			cloth[i*col + j].pos = { cloth[0].pos.x + j*springLength ,cloth[0].pos.y ,cloth[0].pos.z + i*springLength };
@@ -108,16 +56,16 @@ void particleToFloatConverter() {
 }
 
 // FORCES
-float keStruc = 50;// 1000.f;//500-1000
-float kdStruc = 10;// 50.f;//30-70
-float keShear = 1000.f;//500-1000
-float kdShear = 50.f;//30-70
-float keBend = 1000.f;//500-1000
-float kdBend = 50.f;//30-70
+float keStruc = 100;// 1000.f;//500-1000
+float kdStruc = 7;// 50.f;//30-70
+float keShear = 100.f;//500-1000
+float kdShear = 7.f;//30-70
+float keBend = 100.f;//500-1000
+float kdBend = 7.f;//30-70
 glm::vec3 neighbourSpringForce(int index1, int index2, float ke, float kd, float L) { //retorna la força que rep la particula d'index 1 respecte la 2
-	//passar distancia per parametre? probablement
+
 	float modul = glm::distance(cloth[index1].pos, cloth[index2].pos);
-	glm::vec3 vecUnitari = (cloth[index1].pos - cloth[index2].pos) / modul;
+	glm::vec3 vecUnitari = glm::normalize(cloth[index1].pos - cloth[index2].pos);
 	float dampingTerm = glm::dot(kd * (cloth[index1].velocity - cloth[index2].velocity), vecUnitari);
 	float primerTerme = ke * (modul - L) + dampingTerm;
 	glm::vec3 force = -primerTerme*vecUnitari;
@@ -125,14 +73,15 @@ glm::vec3 neighbourSpringForce(int index1, int index2, float ke, float kd, float
 	return force;
 }
 
+
 void addStructuralForces() {
 	//centrals
-	for (int i = 1; i < row-1; ++i) {
-		for (int j = 1; j < col-1; ++j) {
-			cloth[i*col + j].totalForce += neighbourSpringForce(i*col + j, (i-1)*col + j, keStruc, kdStruc, springLength);
-			cloth[i*col + j].totalForce += neighbourSpringForce(i*col + j, (i+1)*col + j, keStruc, kdStruc, springLength);
-			cloth[i*col + j].totalForce += neighbourSpringForce(i*col + j, i*col + j+1, keStruc, kdStruc, springLength);
-			cloth[i*col + j].totalForce += neighbourSpringForce(i*col + j, i*col + j-1, keStruc, kdStruc, springLength);
+	for (int i = 1; i < row - 1; ++i) {
+		for (int j = 1; j < col - 1; ++j) {
+			cloth[i*col + j].totalForce += neighbourSpringForce(i*col + j, (i - 1)*col + j, keStruc, kdStruc, springLength);
+			cloth[i*col + j].totalForce += neighbourSpringForce(i*col + j, (i + 1)*col + j, keStruc, kdStruc, springLength);
+			cloth[i*col + j].totalForce += neighbourSpringForce(i*col + j, i*col + j + 1, keStruc, kdStruc, springLength);
+			cloth[i*col + j].totalForce += neighbourSpringForce(i*col + j, i*col + j - 1, keStruc, kdStruc, springLength);
 		}
 	}
 	//cantonades
@@ -152,18 +101,30 @@ void addStructuralForces() {
 			+ neighbourSpringForce(l2, l2 - col, keStruc, kdStruc, springLength);
 	}
 	for (int l3 = 1; l3 < row - 1; ++l3) {
-		cloth[l3*col].totalForce += neighbourSpringForce(l3*col, (l3-1)*col, keStruc, kdStruc, springLength)
+		cloth[l3*col].totalForce += neighbourSpringForce(l3*col, (l3 - 1)*col, keStruc, kdStruc, springLength)
 			+ neighbourSpringForce(l3*col, (l3 + 1)*col, keStruc, kdStruc, springLength)
 			+ neighbourSpringForce(l3*col, l3*col + 1, keStruc, kdStruc, springLength);
 	}
 	for (int l4 = 1; l4 < row - 1; ++l4) {
-		cloth[l4*col+13].totalForce += neighbourSpringForce(l4*col + 13, (l4 - 1)*col+13, keStruc, kdStruc, springLength)
-			+ neighbourSpringForce(l4*col + 13, (l4 + 1)*col+13, keStruc, kdStruc, springLength)
-			+ neighbourSpringForce(l4*col + 13, l4*col +13 - 1, keStruc, kdStruc, springLength);
+		cloth[l4*col + 13].totalForce += neighbourSpringForce(l4*col + 13, (l4 - 1)*col + 13, keStruc, kdStruc, springLength)
+			+ neighbourSpringForce(l4*col + 13, (l4 + 1)*col + 13, keStruc, kdStruc, springLength)
+			+ neighbourSpringForce(l4*col + 13, l4*col + 13 - 1, keStruc, kdStruc, springLength);
 	}
 }
+glm::vec3 diagonalTempForce1, diagonalTempForce2; //1: top-left to bot-right. 2: bot-left to top-right
 void addShearForces() {
-
+	for (int i = 0; i < 237; ++i) {
+		if (i % 14 != 13) {
+			//calcular forces
+			diagonalTempForce1 = neighbourSpringForce(i, i + 15, keShear, kdShear, diagonalSpringLength);
+			diagonalTempForce2 = neighbourSpringForce(i + 14, i + 1, keShear, kdShear, diagonalSpringLength);
+			//sumar forces
+			cloth[i].totalForce += diagonalTempForce1;
+			cloth[i + 15].totalForce -= diagonalTempForce1;
+			cloth[i + 14].totalForce += diagonalTempForce2;
+			cloth[i + 1].totalForce -= diagonalTempForce2;
+		}
+	}
 }
 void addBendingForces() {
 	//Aplicació de la força a les partícules interiors( les que tenen 4 springs cada una)
@@ -180,7 +141,7 @@ void addBendingForces() {
 		for (int j = 1; j < col - 1; j++) {
 			//Apliquem la força a les 4 partícules amb només dos springs
 			if (i < 2 && j < 2 && i > row - 2 && j > col - 2) {
-				if (i*col + j == 1*col + 1) {
+				if (i*col + j == 1 * col + 1) {
 					cloth[i*col + j].totalForce += neighbourSpringForce(i*col + j, i*col + (j + 2), keBend, keStruc, springLength * 2);
 					cloth[i*col + j].totalForce += neighbourSpringForce(i*col + j, (i + 2)*col + j, keBend, keStruc, springLength * 2);
 				}
@@ -342,26 +303,32 @@ void boxCollision() {
 //PHYSICS MAIN FUNCTIONS
 void PhysicsInit() {
 	initializeCloth();
+	/*std::cout << 0 % 13 << std::endl;
+	std::cout << 1 % 13<< std::endl;
+	std::cout << 2 % 13 << std::endl;*/
 }
+
 void PhysicsUpdate(float dt) {
 	//calcular forces
-	addStructuralForces();
+	//addStructuralForces();
+	//addShearForces();
+	addBendingForces();
 
 	moveParticle(dt);
-	boxCollision();
+	//boxCollision();
 	if (renderSphere) collideSphere();
 
 	//reiniciar forces
 	for (int i = 0; i < clothLength; ++i) {
 		cloth[i].totalForce = gravity;
 	}
-	
+
 	particleToFloatConverter();
 	ClothMesh::updateClothMesh(vertArray);
-	
-	
+
 
 }
+
 void PhysicsCleanup() {
 	//TODO
 	delete[] cloth;
