@@ -6,15 +6,20 @@
 #include <cstdio>
 #include <iostream>
 #include <math.h>
+#include <time.h>
 
 //Boolean variables allow to show/hide the primitives
-bool renderSphere = false;
+bool renderSphere = true;
 bool renderCloth = true;
 bool show_test_window = false;
 
-glm::vec3 spherePos(0.f, 3.f, 0.f);
-float sphereRadius = 1.f;
+float sphereRadius = rand() % 3 + 0.5f;
+glm::vec3 spherePos(rand() % 7 - 3, rand() % 7 + 1 - sphereRadius, rand() % 7 - 3);
 glm::vec3 gravity = { 0, -9.8f, 0 };
+
+namespace Sphere {
+	extern void updateSphere(glm::vec3 pos = spherePos, float radius = sphereRadius);
+}
 
 namespace ClothMesh {
 	extern void updateClothMesh(float* array_data);
@@ -33,11 +38,14 @@ public:
 
 Particle* cloth = new Particle[clothLength];
 float* vertArray = new float[clothLength * 3];
-float springLength = 0.5f; //max = 0.5
-float diagonalSpringLength = sqrt(pow(springLength, 2) + pow(springLength, 2));
+float springLength = 0.0f; 
+float nextSpringLength = 0.5f;
+float diagonalSpringLength;
 
 void initializeCloth() {
-	cloth[0].pos = { -(13 * springLength / 2),7,-(17 * springLength / 2) };
+	springLength = nextSpringLength;
+	diagonalSpringLength = sqrt(pow(springLength, 2) + pow(springLength, 2));
+	cloth[0].pos = { -(13 * springLength / 2),8,-(17 * springLength / 2) };
 	for (int i = 0; i < row; ++i) {
 		for (int j = 0; j < col; ++j) {
 			cloth[i*col + j].pos = { cloth[0].pos.x + j*springLength ,cloth[0].pos.y ,cloth[0].pos.z + i*springLength };
@@ -57,12 +65,12 @@ void particleToFloatConverter() {
 }
 
 // FORCES
-float keStruc = 100;// 1000.f;//500-1000
-float kdStruc = 7;// 50.f;//30-70
-float keShear = 100.f;//500-1000
-float kdShear = 7.f;//30-70
-float keBend = 100.f;//500-1000
-float kdBend = 7.f;//30-70
+float keStruc = 600.f;
+float kdStruc = 25.f;
+float keShear = 600.f;
+float kdShear = 25.f;
+float keBend = 600.f;
+float kdBend = 25.f;
 glm::vec3 neighbourSpringForce(int index1, int index2, float ke, float kd, float L) { //retorna la força que rep la particula d'index 1 respecte la 2
 
 	float modul = glm::distance(cloth[index1].pos, cloth[index2].pos);
@@ -73,7 +81,6 @@ glm::vec3 neighbourSpringForce(int index1, int index2, float ke, float kd, float
 
 	return force;
 }
-
 
 glm::vec3 horizontalTempForce, verticalTempForce;
 void addStructuralForces() {
@@ -92,7 +99,7 @@ void addStructuralForces() {
 	}
 }
 
-glm::vec3 diagonalTempForce1, diagonalTempForce2; //1: top-left to bot-right. 2: bot-left to top-right
+glm::vec3 diagonalTempForce1, diagonalTempForce2; 
 void addShearForces() {
 	for (int i = 0; i < 237; ++i) {
 		if (i % 14 != 13) {
@@ -124,11 +131,6 @@ void addBendingForces() {
 			cloth[i + 14 * 2].totalForce -= verticalDoubleSpring;
 		}
 	}
-}
-
-void changeCoeficients(float ke, float kd) {
-	keStruc = keShear = keBend = ke;
-	kdStruc = kdShear = kdBend = kd;
 }
 
 //	MOVEMENT
@@ -163,7 +165,20 @@ void collidePlane(int index, int A, int B, int C, int d) {
 	}
 }
 
-float a, b, c, resPos, resNeg, res, x, y, z; //variables for collide sphere
+void offsetPos(int index, glm::vec3 v) { cloth[index].pos += v; }
+
+void ballCollision() {
+	for (int i = 0; i < clothLength; ++i) {
+		glm::vec3 v = cloth[i].pos - spherePos;
+		float l = sqrt(v.x * v.x + v.y * v.y + v.z * v.z);
+		if (l < sphereRadius)
+		{
+			offsetPos(i, glm::vec3(v.x / l, v.y / l, v.z / l)*(sphereRadius - l));
+		}
+	}
+}
+
+float a, b, c, resPos, resNeg, res, x, y, z; 
 void collideSphere() {
 	for (int i = 0; i < clothLength; ++i) {
 		a = (cloth[i].pos.x - cloth[i].prePos.x) * (cloth[i].pos.x - cloth[i].prePos.x) +
@@ -209,6 +224,8 @@ void collideSphere() {
 			}
 		}
 	}
+	
+	ballCollision();
 }
 
 void boxCollision() {
@@ -222,22 +239,26 @@ void boxCollision() {
 	}
 }
 
-
-
 //PHYSICS MAIN FUNCTIONS
 void PhysicsInit() {
 	initializeCloth();
-	changeCoeficients(600, 25);
-	
+	srand(time(NULL));
 }
 
 float seconds = 0.0f;
-int secondsUntilRestart = 20.f;
+int secondsUntilRestart = 20;
 
 void PhysicsUpdate(float dt) {
 
+	if (seconds >= secondsUntilRestart) {
+		initializeCloth();
+		seconds = 0;
+		sphereRadius = rand() % 3 + 0.5f;
+		spherePos = { rand() % 7 - 3, rand() % 7 + 1 - sphereRadius,rand() % 7 - 3 };
+		Sphere::updateSphere();
+	}
 	for (int i = 0; i < 10; ++i) {
-		//calcular forces
+	
 		addStructuralForces();
 		addShearForces();
 		addBendingForces();
@@ -252,40 +273,38 @@ void PhysicsUpdate(float dt) {
 		}
 		particleToFloatConverter();
 		ClothMesh::updateClothMesh(vertArray);
-	}
-	/*boxCollision();
-	if (renderSphere) collideSphere();*/
-
-	//reiniciar forces
-	
-
-	
-
-	
+	}	
+	seconds += dt;
 }
 
 void PhysicsCleanup() {
-	//TODO
 	delete[] cloth;
 	delete[] vertArray;
 }
 
 void GUI() {
-	{	//FrameRate
+	{	
 		ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
-		/*ImGui::Text("Seconds until restart %f", &seconds);
-		ImGui::DragInt("Max seconds until restart", &secondsUntilRestart, 1, 1, 50);
 		ImGui::Separator();
-		ImGui::DragFloat("Ke Structural", &keStruc, 1.f, 0, 1000);
-		ImGui::DragFloat("Kd Structural", &kdStruc, 1.f, 0, 70);
-		ImGui::DragFloat("Ke Shear", &keShear, 1.f, 0, 1000);
-		ImGui::DragFloat("kd Shear", &kdShear, 1.f, 0, 70);
-		ImGui::DragFloat("Ke Bending", &keBend, 1.f, 0, 1000);
-		ImGui::DragFloat("kd Bending", &kdBend, 1.f, 0, 70);
+		ImGui::Text("Parametrizable seconds");
 		ImGui::Separator();
-		ImGui::DragFloat("Spring Length", &springLength, 0.1f, 0.3f, 0.5);
+		ImGui::Text("Seconds %.1f", seconds);
+		ImGui::DragInt("Seconds until restart", &secondsUntilRestart, 1, 1, 50);
+		ImGui::Separator();
+		ImGui::Text("Elasticity and Damping coeficients");
+		ImGui::Separator();
+		ImGui::DragFloat("Ke Structural", &keStruc, 1.f, 1, 1000);
+		ImGui::DragFloat("Kd Structural", &kdStruc, 1.f, 1, 50);
+		ImGui::DragFloat("Ke Shear", &keShear, 1.f, 1, 1000);
+		ImGui::DragFloat("kd Shear", &kdShear, 1.f, 1, 50);
+		ImGui::DragFloat("Ke Bending", &keBend, 1.f, 1, 1000);
+		ImGui::DragFloat("kd Bending", &kdBend, 1.f, 1, 50);
+		ImGui::Separator();
+		ImGui::Text("Spring length");
+		ImGui::Separator();
+		ImGui::DragFloat("Spring Length", &nextSpringLength, 0.1f, 0.1f, 0.5);
 
-		*/
+		
 	}
 
 	// ImGui test window. Most of the sample code is in ImGui::ShowTestWindow()
