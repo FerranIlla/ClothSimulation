@@ -44,7 +44,7 @@ void initializeCloth() {
 			cloth[i*col + j].prePos = cloth[i*col + j].pos;
 			cloth[i*col + j].velocity = { 0,0,0 };
 			cloth[i*col + j].totalForce = gravity;
-			std::cout << i*col + j << std::endl;
+
 		}
 	}
 }
@@ -61,8 +61,8 @@ float keStruc = 100;// 1000.f;//500-1000
 float kdStruc = 7;// 50.f;//30-70
 float keShear = 100.f;//500-1000
 float kdShear = 7.f;//30-70
-float keBend = 1.f;//500-1000
-float kdBend = 1.f;//30-70
+float keBend = 100.f;//500-1000
+float kdBend = 7.f;//30-70
 glm::vec3 neighbourSpringForce(int index1, int index2, float ke, float kd, float L) { //retorna la força que rep la particula d'index 1 respecte la 2
 
 	float modul = glm::distance(cloth[index1].pos, cloth[index2].pos);
@@ -111,7 +111,7 @@ void addShearForces() {
 glm::vec3 horizontalDoubleSpring, verticalDoubleSpring;
 void addBendingForces() {
 	for (int i = 0; i < clothLength; i++) {
-		if (i % 14 != 12 || i % 14 != 13) {
+		if (i % 14 != 12 && i % 14 != 13) {
 			horizontalDoubleSpring = neighbourSpringForce(i, i + 2, keBend, kdBend, springLength * 2);
 			cloth[i].totalForce += horizontalDoubleSpring;
 			cloth[i + 2].totalForce -= horizontalDoubleSpring;
@@ -229,9 +229,9 @@ void PhysicsInit() {
 
 void PhysicsUpdate(float dt) {
 	//calcular forces
-	//addStructuralForces();
+	addStructuralForces();
 	//addShearForces();
-	addBendingForces();
+	//addBendingForces();
 
 	moveParticle(dt);
 	boxCollision();
