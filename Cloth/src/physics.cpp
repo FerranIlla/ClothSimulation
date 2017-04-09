@@ -11,7 +11,7 @@
 //Boolean variables allow to show/hide the primitives
 bool renderSphere = true;
 bool renderCloth = true;
-bool show_test_window = false;
+bool show_test_window = true;
 
 float sphereRadius = rand() % 3 + 0.5f;
 glm::vec3 spherePos(rand() % 7 - 3, rand() % 7 + 1 - sphereRadius, rand() % 7 - 3);
@@ -239,6 +239,41 @@ void boxCollision() {
 	}
 }
 
+//Max Ellingation
+void maxEllongationReposition(int numberOfLoops, int percentage) {
+	glm::vec3 v; //vector between neighbour vertex
+	float d; //distance between neighbour vertex
+	float allowedEllongation = springLength + springLength*percentage / 100;
+	for (int k = 0; k < numberOfLoops; ++k) {
+		for (int i = 0; i < clothLength; ++i) {
+				if (i % 14 != 13) { //horizontals
+					d = glm::distance(cloth[i].pos, cloth[i + 1].pos);
+					if (d > allowedEllongation) {
+						v = glm::normalize(cloth[i + 1].pos - cloth[i].pos);
+						if (i == 0) cloth[i + 1].pos -= v*(d - allowedEllongation);
+						else if (i == 12) cloth[i].pos += v*(d - allowedEllongation);
+						else {
+							cloth[i].pos += v*((d - allowedEllongation) / 2);
+							cloth[i + 1].pos -= v*((d - allowedEllongation) / 2);
+						}
+					}
+				}
+				if (i < 238) { //verticals
+					d = glm::distance(cloth[i].pos, cloth[i + 14].pos);
+					if (d > allowedEllongation) {
+						v = glm::normalize(cloth[i + 14].pos - cloth[i].pos);
+						if (i == 0) cloth[i + 14].pos -= v*(d - allowedEllongation);
+						else if(i == 13) cloth[i+14].pos -= v*(d - allowedEllongation);
+						else {
+							cloth[i].pos += v*((d - allowedEllongation) / 2);
+							cloth[i + 14].pos -= v*((d - allowedEllongation) / 2);
+						}
+					}
+				}
+		}
+	}
+}
+
 //PHYSICS MAIN FUNCTIONS
 void PhysicsInit() {
 	initializeCloth();
@@ -247,7 +282,7 @@ void PhysicsInit() {
 
 float seconds = 0.0f;
 int secondsUntilRestart = 20;
-
+int maxEllongation = 100;
 void PhysicsUpdate(float dt) {
 
 	if (seconds >= secondsUntilRestart) {
@@ -271,6 +306,9 @@ void PhysicsUpdate(float dt) {
 		for (int i = 0; i < clothLength; ++i) {
 			cloth[i].totalForce = gravity;
 		}
+
+		maxEllongationReposition(5, maxEllongation);
+
 		particleToFloatConverter();
 		ClothMesh::updateClothMesh(vertArray);
 	}	
@@ -289,20 +327,22 @@ void GUI() {
 		ImGui::Text("Parametrizable seconds");
 		ImGui::Separator();
 		ImGui::Text("Seconds %.1f", seconds);
-		ImGui::DragInt("Seconds until restart", &secondsUntilRestart, 1, 1, 50);
+		ImGui::SliderInt("Seconds until restart", &secondsUntilRestart, 1, 30);
 		ImGui::Separator();
 		ImGui::Text("Elasticity and Damping coeficients");
 		ImGui::Separator();
-		ImGui::DragFloat("Ke Structural", &keStruc, 1.f, 1, 1000);
-		ImGui::DragFloat("Kd Structural", &kdStruc, 1.f, 1, 50);
-		ImGui::DragFloat("Ke Shear", &keShear, 1.f, 1, 1000);
-		ImGui::DragFloat("kd Shear", &kdShear, 1.f, 1, 50);
-		ImGui::DragFloat("Ke Bending", &keBend, 1.f, 1, 1000);
-		ImGui::DragFloat("kd Bending", &kdBend, 1.f, 1, 50);
+		ImGui::DragFloat("Ke Structural", &keStruc, 1.f, 1, 1000,"%.0f");
+		ImGui::DragFloat("Kd Structural", &kdStruc, 1.f, 1, 50, "%.0f");
+		ImGui::DragFloat("Ke Shear", &keShear, 1.f, 1, 1000, "%.0f");
+		ImGui::DragFloat("kd Shear", &kdShear, 1.f, 1, 50, "%.0f");
+		ImGui::DragFloat("Ke Bending", &keBend, 1.f, 1, 1000, "%.0f");
+		ImGui::DragFloat("kd Bending", &kdBend, 1.f, 1, 50, "%.0f");
 		ImGui::Separator();
-		ImGui::Text("Spring length");
+		ImGui::Text("Links properties");
 		ImGui::Separator();
-		ImGui::DragFloat("Spring Length", &nextSpringLength, 0.1f, 0.1f, 0.5);
+		ImGui::SliderFloat("Link Length", &nextSpringLength,0.1f,0.5f,"%.2f");
+		ImGui::SliderInt("Max Ellingation", &maxEllongation,0,200,"%.0f%");
+
 
 		
 	}
