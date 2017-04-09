@@ -8,9 +8,9 @@
 #include <math.h>
 
 //Boolean variables allow to show/hide the primitives
-bool renderSphere = false;
+bool renderSphere = true;
 bool renderCloth = true;
-bool show_test_window = false;
+bool show_test_window = true;
 
 glm::vec3 spherePos(0.f, 3.f, 0.f);
 float sphereRadius = 1.f;
@@ -110,20 +110,25 @@ void addShearForces() {
 
 glm::vec3 horizontalDoubleSpring, verticalDoubleSpring;
 void addBendingForces() {
-	for (int i = 0; i < clothLength; i++) {
+	for (int i = 0; i < clothLength; ++i) {
 		if (i % 14 != 12 && i % 14 != 13) {
 			horizontalDoubleSpring = neighbourSpringForce(i, i + 2, keBend, kdBend, springLength * 2);
 			cloth[i].totalForce += horizontalDoubleSpring;
 			cloth[i + 2].totalForce -= horizontalDoubleSpring;
 		}
 	}
-	for (int i = 0; i < clothLength; i++) {
+	for (int i = 0; i < clothLength; ++i) {
 		if (i < 224) {
 			verticalDoubleSpring = neighbourSpringForce(i, i + 14 * 2, keBend, kdBend, springLength * 2);
 			cloth[i].totalForce += verticalDoubleSpring;
 			cloth[i + 14 * 2].totalForce -= verticalDoubleSpring;
 		}
 	}
+}
+
+void changeCoeficients(float ke, float kd) {
+	keStruc = keShear = keBend = ke;
+	kdStruc = kdShear = kdBend = kd;
 }
 
 //	MOVEMENT
@@ -222,18 +227,28 @@ void boxCollision() {
 //PHYSICS MAIN FUNCTIONS
 void PhysicsInit() {
 	initializeCloth();
+	changeCoeficients(100, 7);
 	/*std::cout << 0 % 13 << std::endl;
 	std::cout << 1 % 13<< std::endl;
 	std::cout << 2 % 13 << std::endl;*/
 }
 
+float seconds = 0.0f;
+int secondsUntilRestart = 20.f;
 void PhysicsUpdate(float dt) {
-	//calcular forces
-	addStructuralForces();
-	//addShearForces();
-	//addBendingForces();
 
-	moveParticle(dt);
+	if (seconds >= secondsUntilRestart) {
+		initializeCloth();
+		seconds = 0;
+	}
+	for (int i = 0; i < 10; ++i) {
+		//calcular forces
+		addStructuralForces();
+		addShearForces();
+		addBendingForces();
+		//caluculateForces();
+		moveParticle(dt/10);
+	}
 	boxCollision();
 	if (renderSphere) collideSphere();
 
@@ -245,7 +260,7 @@ void PhysicsUpdate(float dt) {
 	particleToFloatConverter();
 	ClothMesh::updateClothMesh(vertArray);
 
-
+	seconds += dt;
 }
 
 void PhysicsCleanup() {
@@ -257,8 +272,19 @@ void PhysicsCleanup() {
 void GUI() {
 	{	//FrameRate
 		ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
+		ImGui::Text("Seconds until restart %f", &seconds);
+		ImGui::DragInt("Max seconds until restart", &secondsUntilRestart, 1, 1, 50);
+		ImGui::Separator();
+		ImGui::DragFloat("Ke Structural", &keStruc, 1.f, 0, 1000);
+		ImGui::DragFloat("Kd Structural", &kdStruc, 1.f, 0, 70);
+		ImGui::DragFloat("Ke Shear", &keShear, 1.f, 0, 1000);
+		ImGui::DragFloat("kd Shear", &kdShear, 1.f, 0, 70);
+		ImGui::DragFloat("Ke Bending", &keBend, 1.f, 0, 1000);
+		ImGui::DragFloat("kd Bending", &kdBend, 1.f, 0, 70);
+		ImGui::Separator();
+		ImGui::DragFloat("Spring Length", &springLength, 0.1f, 0.3f, 0.5);
 
-		//TODO
+		
 	}
 
 	// ImGui test window. Most of the sample code is in ImGui::ShowTestWindow()
