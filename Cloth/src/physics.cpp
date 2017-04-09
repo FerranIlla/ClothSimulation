@@ -8,9 +8,9 @@
 #include <math.h>
 
 //Boolean variables allow to show/hide the primitives
-bool renderSphere = true;
+bool renderSphere = false;
 bool renderCloth = true;
-bool show_test_window = true;
+bool show_test_window = false;
 
 glm::vec3 spherePos(0.f, 3.f, 0.f);
 float sphereRadius = 1.f;
@@ -33,7 +33,7 @@ public:
 
 Particle* cloth = new Particle[clothLength];
 float* vertArray = new float[clothLength * 3];
-float springLength = 0.3f; //max = 0.5
+float springLength = 0.5f; //max = 0.5
 float diagonalSpringLength = sqrt(pow(springLength, 2) + pow(springLength, 2));
 
 void initializeCloth() {
@@ -227,40 +227,41 @@ void boxCollision() {
 //PHYSICS MAIN FUNCTIONS
 void PhysicsInit() {
 	initializeCloth();
-	changeCoeficients(100, 7);
-	/*std::cout << 0 % 13 << std::endl;
-	std::cout << 1 % 13<< std::endl;
-	std::cout << 2 % 13 << std::endl;*/
+	changeCoeficients(600, 25);
+	
 }
 
 float seconds = 0.0f;
 int secondsUntilRestart = 20.f;
+
 void PhysicsUpdate(float dt) {
 
-	if (seconds >= secondsUntilRestart) {
-		initializeCloth();
-		seconds = 0;
-	}
 	for (int i = 0; i < 10; ++i) {
 		//calcular forces
 		addStructuralForces();
 		addShearForces();
 		addBendingForces();
-		//caluculateForces();
+		
 		moveParticle(dt/10);
+
+		boxCollision();
+		if (renderSphere) collideSphere();
+
+		for (int i = 0; i < clothLength; ++i) {
+			cloth[i].totalForce = gravity;
+		}
+		particleToFloatConverter();
+		ClothMesh::updateClothMesh(vertArray);
 	}
-	boxCollision();
-	if (renderSphere) collideSphere();
+	/*boxCollision();
+	if (renderSphere) collideSphere();*/
 
 	//reiniciar forces
-	for (int i = 0; i < clothLength; ++i) {
-		cloth[i].totalForce = gravity;
-	}
+	
 
-	particleToFloatConverter();
-	ClothMesh::updateClothMesh(vertArray);
+	
 
-	seconds += dt;
+	
 }
 
 void PhysicsCleanup() {
@@ -272,7 +273,7 @@ void PhysicsCleanup() {
 void GUI() {
 	{	//FrameRate
 		ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
-		ImGui::Text("Seconds until restart %f", &seconds);
+		/*ImGui::Text("Seconds until restart %f", &seconds);
 		ImGui::DragInt("Max seconds until restart", &secondsUntilRestart, 1, 1, 50);
 		ImGui::Separator();
 		ImGui::DragFloat("Ke Structural", &keStruc, 1.f, 0, 1000);
@@ -284,7 +285,7 @@ void GUI() {
 		ImGui::Separator();
 		ImGui::DragFloat("Spring Length", &springLength, 0.1f, 0.3f, 0.5);
 
-		
+		*/
 	}
 
 	// ImGui test window. Most of the sample code is in ImGui::ShowTestWindow()
