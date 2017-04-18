@@ -300,14 +300,14 @@ void PhysicsUpdate(float dt) {
 		
 		moveParticle(dt/10);
 
+		maxEllongationReposition(5, maxEllongation);
+
 		boxCollision();
 		if (renderSphere) collideSphere();
 
 		for (int i = 0; i < clothLength; ++i) {
 			cloth[i].totalForce = gravity;
 		}
-
-		maxEllongationReposition(5, maxEllongation);
 
 		particleToFloatConverter();
 		ClothMesh::updateClothMesh(vertArray);
